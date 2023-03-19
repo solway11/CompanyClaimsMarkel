@@ -20,7 +20,7 @@ namespace CompanyClaimsTest
         private readonly ClaimsAPIDbContext dbContext;
 
         [Fact]
-        public async Task FiveHundredErrorWhenAddingAClaimWithUCRMoreThan20Chars()
+        public async Task OkResponseWhenAddingAClaim()
         {
             var claimsController = new ClaimsController(this.dbContext);
             var addClaimRequest = new AddClaimRequest {                
@@ -35,6 +35,7 @@ namespace CompanyClaimsTest
 
             // Act
             var result = await claimsController.AddClaim(addClaimRequest) as OkObjectResult;
+
             // Assert
             Assert.NotNull(result);
             Assert.Equal(result.StatusCode,200); 

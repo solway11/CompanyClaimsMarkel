@@ -76,32 +76,13 @@ namespace CompanyClaimsApi.Controllers
         [Route("{id:int}")]
         public async Task<IActionResult> GetCompanyById([FromRoute] int id)
         {
-            bool bolActiveInsurancePolicy=false;
-
             try
             {
                 var company = await dbContext.Company.FindAsync(id);
 
                 if (company != null)
                 {
-                    
-                    bolActiveInsurancePolicy = Convert.ToInt32(DateTime.Now.Subtract(company.InsuranceEndDate).TotalDays) <= 0;
-
-                    var selectcompany = new SelectCompanyRequest()
-                    {
-                        Id = id,
-                        Name = company.Name,
-                        Address1 = company.Address1,
-                        Address2 = company.Address2,
-                        Address3 = company.Address3,
-                        Postcode = company.Postcode,
-                        Country = company.Country,
-                        Active = company.Active,
-                        InsuranceEndDate = company.InsuranceEndDate,
-                        ActiveInsurancePolicy = bolActiveInsurancePolicy
-
-                    };
-                    return Ok(selectcompany);
+                    return Ok(company);
                 }
 
                 return NotFound();
@@ -112,5 +93,6 @@ namespace CompanyClaimsApi.Controllers
                     "Error retrieving data from the database");
             }
         }
+         
     }
 }
