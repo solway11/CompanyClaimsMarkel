@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.Design;
+using System.Data.SqlTypes;
 
 namespace CompanyClaimsApi.Controllers
 {
@@ -79,7 +80,7 @@ namespace CompanyClaimsApi.Controllers
 
                 if (claim != null)
                 {
-                  return Ok(claim);
+                    return Ok(claim);
                 }
 
                 return NotFound();
@@ -116,24 +117,25 @@ namespace CompanyClaimsApi.Controllers
         {
             try
             {
-                ValidateCompanyAdd(addClaimRequest);
 
-            var claim = new Claims()
-            {
-                Id = Guid.NewGuid(),
-                UCR = addClaimRequest.UCR,
-                CompanyID = addClaimRequest.CompanyID,
-                ClaimDate = addClaimRequest.ClaimDate,
-                LossDate = addClaimRequest.LossDate,
-                AssuredName = addClaimRequest.AssuredName,
-                IncurredLoss = addClaimRequest.IncurredLoss,
-                Closed = addClaimRequest.Closed
-            };
+                ValidateClaimAdd(addClaimRequest);
 
-            await dbContext.Claims.AddAsync(claim);
-            await dbContext.SaveChangesAsync();
+                var claim = new Claims()
+                {
+                    Id = Guid.NewGuid(),
+                    UCR = addClaimRequest.UCR,
+                    CompanyID = addClaimRequest.CompanyID,
+                    ClaimDate = addClaimRequest.ClaimDate,
+                    LossDate = addClaimRequest.LossDate,
+                    AssuredName = addClaimRequest.AssuredName,
+                    IncurredLoss = addClaimRequest.IncurredLoss,
+                    Closed = addClaimRequest.Closed
+                };
 
-            return Ok(claim);
+                await dbContext.Claims.AddAsync(claim);
+                await dbContext.SaveChangesAsync();
+
+                return Ok(claim);
             }
             catch (Exception e)
             {
@@ -141,13 +143,18 @@ namespace CompanyClaimsApi.Controllers
             }
         }
 
+
         [HttpPut]
         [Route("{id:guid}")]
-        public async Task<IActionResult> UpdateClaim([FromRoute] Guid id,UpdateClaimRequest updateClaimRequest)
+        public async Task<IActionResult> UpdateClaim([FromRoute] Guid id, UpdateClaimRequest updateClaimRequest)
         {
             try
             {
-                ValidateCompanyUpdate(updateClaimRequest);
+                if (!ModelState.IsValid)
+                {
+                    throw new Exception("Error in model");
+                }
+                ValidateClaimUpdate(updateClaimRequest);
 
                 var claim = await dbContext.Claims.FindAsync(id);
 
@@ -170,19 +177,37 @@ namespace CompanyClaimsApi.Controllers
             }
             catch (Exception e)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,e.InnerException);
+                return StatusCode(StatusCodes.Status500InternalServerError, e.InnerException);
             }
         }
 
-        private void ValidateCompanyAdd(AddClaimRequest addClaimRequest)
+        private void ValidateClaimAdd(AddClaimRequest addClaimRequest)
         {
             if (addClaimRequest.UCR.Length > 20) { throw new Exception("UCR Length too long"); }
+            if (addClaimRequest.AssuredName.Length > 100) { throw new Exception("AssuredName Length too long"); }
+            if (!DecimalIsValid(addClaimRequest.IncurredLoss, 15, 2)) { throw new Exception("IncurredLoss should be max 2 decimal places, max 15 significant figures."); }
 
         }
-        private void ValidateCompanyUpdate(UpdateClaimRequest updateClaimRequest)
+        private void ValidateClaimUpdate(UpdateClaimRequest updateClaimRequest)
         {
             if (updateClaimRequest.UCR.Length > 20) { throw new Exception("UCR Length too long"); }
- 
+            if (updateClaimRequest.AssuredName.Length > 100) { throw new Exception("AssuredName Length too long"); }
+            if (!DecimalIsValid(updateClaimRequest.IncurredLoss, 15, 2)) { throw new Exception("IncurredLoss should be max 2 decimal places, max 15 significant figures."); }
         }
+        private static bool DecimalIsValid(decimal value, byte precision, byte scale)
+        {
+            var sqlDecimal = new SqlDecimal(value);
+
+            var actualDigitsToLeftOfDecimal = sqlDecimal.Precision - sqlDecimal.Scale;
+
+            var allowedDigitsToLeftOfDecimal = precision - scale;
+
+            return
+                actualDigitsToLeftOfDecimal <= allowedDigitsToLeftOfDecimal &&
+                sqlDecimal.Scale <= scale;
+        }
+
     }
+
 }
+
